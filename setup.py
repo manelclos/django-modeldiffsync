@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name='django-modeldiffsync',
+    name='modeldiffsync',
     version='0.1',
     description='Sync modeldiff information between two databases',
     long_description=open('README.md').read(),
