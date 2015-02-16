@@ -17,8 +17,8 @@ import json
 
 
 @beanstalk_job
-def run_sync(sync_id):
-    for sync in ModeldiffSync.objects.filter(active=True):
+def run_sync(name):
+    for sync in ModeldiffSync.objects.filter(name=name, active=True):
         run_single_sync(sync)
 
 def run_single_sync(sync):
