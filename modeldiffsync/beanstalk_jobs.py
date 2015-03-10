@@ -31,7 +31,7 @@ def run_single_sync(sync):
     print sync.name
     print sync.source_url
     print sync.last_id
-    payload = {'last_id': sync.last_id, 'limit': '1'}
+    payload = {'last_id': sync.last_id, 'limit': '100'}
     r = requests.get(sync.source_url, params=payload, verify=False)
     print r.status_code
     print r.text
