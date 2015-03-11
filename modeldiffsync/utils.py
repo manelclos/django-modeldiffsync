@@ -30,13 +30,14 @@ def run_sync(sync):
             gmd['key_id'] = gmd['id']
             del gmd['id']
             r = create_remote_geomodeldiff(sync.target_url, gmd)
-            sync.last_id = gmd['key_id']
-            sync.save()
             print r.status_code
             print r.text
-            if not r.status_code == 201:
+            if r.status_code == 201:
+                sync.last_id = gmd['key_id']
+                sync.save()
+            else:
                 raise Exception(r.text)
-            
+
         r = requests.get(sync.target_update_url)
         print r.status_code
         print r.text
