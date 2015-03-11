@@ -85,7 +85,7 @@ class Update(Endpoint):
                 fields = old_data.keys()
  
             current = model_to_dict(obj)
-            for k in fields:
+            for k in old_data:
                 current_value = current.get(k)
 
                 if k == geom_field:
@@ -101,7 +101,7 @@ class Update(Endpoint):
             print "OK_TO_APPLY:", ok_to_apply
             if ok_to_apply:
                 new_data = json.loads(r.new_data)
-                for k in new_data:
+                for k in fields:
                     setattr(obj, k, new_data[k])
                 obj.save(modeldiff_ignore=True)
                 r.applied = True
