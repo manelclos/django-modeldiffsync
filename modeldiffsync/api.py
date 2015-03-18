@@ -4,6 +4,7 @@ from django.conf import settings
 from django.db.models.loading import get_model
 from django.forms.models import model_to_dict
 from django.contrib.gis.utils.wkt import precision_wkt
+from django.contrib.gis.geos import GEOSGeometry
 
 from restless.views import Endpoint
 from restless.modelviews import ListEndpoint, DetailEndpoint
@@ -59,7 +60,7 @@ class Update(Endpoint):
         qs = Geomodeldiff.objects.filter(applied=False)
         qs = qs.exclude(key=settings.MODELDIFF_KEY)
 
-        sync_conf = getattr(settings, 'MODELDIFFSYNC_CONF', None)
+        sync_conf = getattr(settings, 'MODELDIFFSYNC_CONF', {})
 
         for r in qs:
             model = get_model(*r.model_name.rsplit('.', 1))
@@ -91,7 +92,12 @@ class Update(Endpoint):
                 if k == geom_field:
                     geom = getattr(obj, geom_field)
                     current_value = precision_wkt(geom, geom_precision)
-                
+                    # early check to detect precision errors
+                    if not current_value == old_data[k]:
+                        # recreate the geometry and the wkt back again
+                        geom = GEOSGeometry(old_data[k])
+                        old_data[k] = precision_wkt(geom, geom_precision)
+
                 if not current_value == old_data[k]:
                     print "BAD PREVIOUS STATUS: %s => %s == %s" % (k, old_data[k], current_value)
                     ok_to_apply = False
