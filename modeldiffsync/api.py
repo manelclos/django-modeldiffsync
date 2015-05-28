@@ -56,4 +56,7 @@ class Update(Endpoint):
         from .update import apply_modeldiffs
         result = apply_modeldiffs()
 
+        if len(result['rows_skipped']) > 0:
+            mail_admins('Some modeldiffs failed to apply!')
+
         return serialize(result['qs'], exclude=('the_geom'))
