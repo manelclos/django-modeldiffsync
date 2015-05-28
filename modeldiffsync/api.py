@@ -1,10 +1,6 @@
 import json
 
 from django.conf import settings
-from django.db.models.loading import get_model
-from django.forms.models import model_to_dict
-from django.contrib.gis.utils.wkt import precision_wkt
-from django.contrib.gis.geos import GEOSGeometry
 
 from restless.views import Endpoint
 from restless.modelviews import ListEndpoint, DetailEndpoint
@@ -57,60 +53,7 @@ class GeomodeldiffList(ListEndpoint):
 
 class Update(Endpoint):
     def get(self, request):
-        qs = Geomodeldiff.objects.filter(applied=False)
-        qs = qs.exclude(key=settings.MODELDIFF_KEY)
+        from .update import apply_modeldiffs
+        result = apply_modeldiffs()
 
-        sync_conf = getattr(settings, 'MODELDIFFSYNC_CONF', {})
-
-        for r in qs:
-            model = get_model(*r.model_name.rsplit('.', 1))
-            geom_field = model.Modeldiff.geom_field
-            geom_precision = model.Modeldiff.geom_precision
-            unique_field = getattr(model.Modeldiff, 'unique_field', None)
-
-            if unique_field:
-                kwargs = {unique_field: r.unique_id}
-                obj = model.objects.get(**kwargs)
-            else:
-                obj = model.objects.get(pk=r.model_id)
-            
-            print obj
-            old_data = json.loads(r.old_data)
-            ok_to_apply = True
-
-            conf = sync_conf.get(r.key, None)
-            fields = None
-            if conf:
-                fields = conf.get(r.model_name, None)
-            if not fields:
-                fields = old_data.keys()
- 
-            current = model_to_dict(obj)
-            for k in old_data:
-                current_value = current.get(k)
-
-                if k == geom_field:
-                    geom = getattr(obj, geom_field)
-                    current_value = precision_wkt(geom, geom_precision)
-                    # early check to detect precision errors
-                    if not current_value == old_data[k]:
-                        # recreate the geometry and the wkt back again
-                        geom = GEOSGeometry(old_data[k])
-                        old_data[k] = precision_wkt(geom, geom_precision)
-
-                if not current_value == old_data[k]:
-                    print "BAD PREVIOUS STATUS: %s => %s == %s" % (k, old_data[k], current_value)
-                    ok_to_apply = False
-                else:
-                    print '%s OK' % k
-
-            print "OK_TO_APPLY:", ok_to_apply
-            if ok_to_apply:
-                new_data = json.loads(r.new_data)
-                for k in fields:
-                    setattr(obj, k, new_data[k])
-                obj.save(modeldiff_ignore=True)
-                r.applied = True
-                r.save()
-
-        return serialize(qs, exclude=('the_geom'))
+        return serialize(result['qs'], exclude=('the_geom'))

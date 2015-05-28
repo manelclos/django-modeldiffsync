@@ -1,0 +1,68 @@
+{% extends 'admin/base_site.html' %}
+
+{% block content %}
+<h1>Apply modeldiffs result</h1>
+
+<h2>Stats</h2>
+<table>
+<tr>
+    <th>Modeldiffs processed:</th>
+    <td>{{ stats.rows_processed }}</td>
+</tr>
+<tr>
+    <th>Modeldiffs applied:</th>
+    <td>{{ rows_applied|length }}</td>
+</tr>
+<tr>
+    <th>Modeldiffs skipped:</th>
+    <td>{{ rows_skipped|length }}</td>
+</tr>
+</table>
+
+{% if rows_skipped %}
+  <h2>Manually apply skipped modeldiffs</h2>
+
+  {% for row in rows_skipped %}
+<p>The diff shows the diferences between the current object in the database
+and the expected values</p>
+
+<form action="" method="post">
+{% csrf_token %}
+
+<table>
+<tr>
+  <th>{{ row.modeldiff.model_name }}</th>
+  {% for field in row.fields %}
+  <th>{{ field }}</th>
+  {% endfor %}
+</tr>
+<tr>
+  <th>Diff</th>
+  {% for field in row.old_diff %}
+  <td>{{ field }}</td>
+  {% endfor %}
+</tr>
+<tr>
+  <th>{{ row.modeldiff.action }}</th>
+  {% for field in row.new_diff %}
+  <td>{{ field }}</td>
+  {% endfor %}
+</tr>
+</table>
+
+<input type="hidden" name="id" value="{{ row.modeldiff.id }}">
+{{ row.modeldiff.id }}
+
+  {% endfor %}
+
+<br/>
+<div style="text-align: center">
+<button type="submit" name="action" value="all">Update all values</button>
+<button type="submit" name="action" value="new_only"
+        style="margin-left: 50px">Update new values only</button>
+</div>
+
+</form>
+{% endif %}
+
+{% endblock content %}
