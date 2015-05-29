@@ -14,11 +14,15 @@ def get_current_object_from_db(modeldiff):
     model = get_model(*modeldiff.model_name.rsplit('.', 1))
     unique_field = getattr(model.Modeldiff, 'unique_field', None)
 
-    if unique_field:
-        kwargs = {unique_field: modeldiff.unique_id}
-        obj = model.objects.get(**kwargs)
-    else:
-        obj = model.objects.get(pk=modeldiff.model_id)
+    try:
+        if unique_field:
+            kwargs = {unique_field: modeldiff.unique_id}
+            obj = model.objects.get(**kwargs)
+        else:
+            obj = model.objects.get(pk=modeldiff.model_id)
+    except model.DoesNotExist:
+        obj = model()
+
     return obj, model
 
 
@@ -28,7 +32,8 @@ def get_object_values(obj, model):
 
     values = model_to_dict(obj)
     geom = getattr(obj, geom_field)
-    values[geom_field] = precision_wkt(geom, geom_precision)
+    if geom:
+        values[geom_field] = precision_wkt(geom, geom_precision)
     return values
 
 
@@ -59,6 +64,87 @@ def save_object(obj):
         obj.save(modeldiff_ignore=True)
 
 
+def modeldiff_add(r):
+    # TODO: check object does not exist
+    obj, model = get_current_object_from_db(r)
+    new_data = json.loads(r.new_data)
+    for k in new_data.keys():
+        setattr(obj, k, new_data[k])
+    save_object(obj)
+    r.applied = True
+    r.save()
+
+
+def modeldiff_update(r):
+    obj, model = get_current_object_from_db(r)
+    geom_field = model.Modeldiff.geom_field
+    geom_precision = model.Modeldiff.geom_precision
+
+    old_data = json.loads(r.old_data)
+    ok_to_apply = True
+
+    fields = old_data.keys()
+
+    current = get_object_values(obj, model)
+    
+    for k in old_data:
+        current_value = current.get(k)
+
+        if k == geom_field:
+            # early check to detect precision errors
+            if not current_value == old_data[k]:
+                # recreate the geometry and the wkt back again
+                geom = GEOSGeometry(old_data[k])
+                old_data[k] = precision_wkt(geom, geom_precision)
+
+        if not unicode(current_value) == unicode(old_data[k]):
+            ok_to_apply = False
+
+    r.fields = fields
+
+    if ok_to_apply:
+        fields = get_fields(r) or old_data.keys()
+        new_data = json.loads(r.new_data)
+        for k in set(fields) & set(new_data.keys()):
+            setattr(obj, k, new_data[k])
+        save_object(obj)
+        r.applied = True
+        r.save()
+
+
+def modeldiff_delete(r):
+    obj, model = get_current_object_from_db(r)
+    geom_field = model.Modeldiff.geom_field
+    geom_precision = model.Modeldiff.geom_precision
+
+    old_data = json.loads(r.old_data)
+    ok_to_apply = True
+
+    fields = old_data.keys()
+
+    current = get_object_values(obj, model)
+    
+    for k in old_data:
+        current_value = current.get(k)
+
+        if k == geom_field:
+            # early check to detect precision errors
+            if not current_value == old_data[k]:
+                # recreate the geometry and the wkt back again
+                geom = GEOSGeometry(old_data[k])
+                old_data[k] = precision_wkt(geom, geom_precision)
+
+        if not unicode(current_value) == unicode(old_data[k]):
+            ok_to_apply = False
+
+    r.fields = fields
+
+    if ok_to_apply:
+        obj.delete()
+        r.applied = True
+        r.save()
+
+
 def apply_modeldiffs(limit=None):
     qs = Geomodeldiff.objects.filter(applied=False).order_by('date_created')
     qs = qs.exclude(key=settings.MODELDIFF_KEY)
@@ -75,43 +161,20 @@ def apply_modeldiffs(limit=None):
     models_fields = {}
 
     for r in qs:
-        obj, model = get_current_object_from_db(r)
-        geom_field = model.Modeldiff.geom_field
-        geom_precision = model.Modeldiff.geom_precision
+        if r.action == 'add':
+            modeldiff_add(r)
 
-        old_data = json.loads(r.old_data)
-        ok_to_apply = True
+        elif r.action == 'delete':
+            modeldiff_delete(r)
+            models_fields[r.model_name] = r.fields
 
-        fields = old_data.keys()
+        elif r.action == 'update':
+            modeldiff_update(r)
+            models_fields[r.model_name] = r.fields
 
-        models_fields[r.model_name] = fields
-
-        current = get_object_values(obj, model)
-        
-        for k in old_data:
-            current_value = current.get(k)
-
-            if k == geom_field:
-                # early check to detect precision errors
-                if not current_value == old_data[k]:
-                    # recreate the geometry and the wkt back again
-                    geom = GEOSGeometry(old_data[k])
-                    old_data[k] = precision_wkt(geom, geom_precision)
-    
-            if not unicode(current_value) == unicode(old_data[k]):
-                ok_to_apply = False
-    
         stats.rows_processed += 1
-        r.fields = fields
 
-        if ok_to_apply:
-            fields = get_fields(r) or old_data.keys()
-            new_data = json.loads(r.new_data)
-            for k in set(fields) & set(new_data.keys()):
-                setattr(obj, k, new_data[k])
-            save_object(obj)
-            r.applied = True
-            r.save()
+        if r.applied:
             rows.applied.append(r)
         else:
             rows.skipped.append(r)
