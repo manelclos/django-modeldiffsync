@@ -89,6 +89,10 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
             modeldiff = Geomodeldiff.objects.get(pk=id)
             obj, model = get_current_object_from_db(modeldiff)
 
+            if modeldiff.action == 'delete':
+                obj.delete()
+                return HttpResponseRedirect('.')
+
             if action == 'all':
                 # fix previous data first
                 print "update ALL"
