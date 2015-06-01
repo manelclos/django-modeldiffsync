@@ -105,7 +105,17 @@ def modeldiff_update(r):
         fields = get_fields(r) or old_data.keys()
         new_data = json.loads(r.new_data)
         for k in set(fields) & set(new_data.keys()):
-            setattr(obj, k, new_data[k])
+            field = model._meta.get_field(k)
+            if isinstance(field, ForeignKey):
+                if new_data[k]:
+                    # TODO: support multiple to_fields
+                    kwargs = { field.to_fields[0]: new_data[k] }
+                    value = field.rel.to().__class__.objects.get(**kwargs)
+                else:
+                    value = None
+            else:
+                value = new_data[k]
+            setattr(obj, k, value)
         save_object(obj)
         r.applied = True
         r.save()
