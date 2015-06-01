@@ -1,6 +1,7 @@
 import json
 
 from django.db import transaction, connection
+from django.db.models import ForeignKey
 from django.db.models.loading import get_model
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
@@ -69,7 +70,14 @@ def modeldiff_add(r):
     obj, model = get_current_object_from_db(r)
     new_data = json.loads(r.new_data)
     for k in new_data.keys():
-        setattr(obj, k, new_data[k])
+        field = model._meta.get_field(k)
+        if isinstance(field, ForeignKey):
+            # TODO: support multiple to_fields
+            kwargs = { field.to_fields[0]: new_data[k] }
+            value = field.rel.to().__class__.objects.get(**kwargs)
+        else:
+            value = new_data[k]
+        setattr(obj, k, value)
     save_object(obj)
     r.applied = True
     r.save()
@@ -140,7 +148,7 @@ def modeldiff_delete(r):
     r.fields = fields
 
     if ok_to_apply:
-        obj.delete()
+        obj.delete(modeldiff_ignore=True)
         r.applied = True
         r.save()
 
