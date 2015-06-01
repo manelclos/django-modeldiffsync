@@ -91,6 +91,8 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
 
             if modeldiff.action == 'delete':
                 obj.delete()
+                modeldiff.applied = True
+                modeldiff.save()
                 return HttpResponseRedirect('.')
 
             if action == 'all':
