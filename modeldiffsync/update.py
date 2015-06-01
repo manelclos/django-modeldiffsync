@@ -50,19 +50,7 @@ def get_fields(modeldiff):
 
 
 def save_object(obj):
-    disable_triggers = getattr(settings, 'MODELDIFFSYNC_DISABLE_TRIGGERS',
-                               False)
-    if disable_triggers:
-        with transaction.atomic():
-            # This code executes inside a transaction.
-            cursor = connection.cursor()
-            cursor.execute("ALTER TABLE %s DISABLE TRIGGER USER" %
-                           obj._meta.db_table)
-            obj.save(modeldiff_ignore=True)
-            cursor.execute("ALTER TABLE %s ENABLE TRIGGER USER" %
-                           obj._meta.db_table)
-    else:
-        obj.save(modeldiff_ignore=True)
+    obj.save(modeldiff_ignore=True)
 
 
 def modeldiff_add(r):
@@ -72,9 +60,12 @@ def modeldiff_add(r):
     for k in new_data.keys():
         field = model._meta.get_field(k)
         if isinstance(field, ForeignKey):
-            # TODO: support multiple to_fields
-            kwargs = { field.to_fields[0]: new_data[k] }
-            value = field.rel.to().__class__.objects.get(**kwargs)
+            if new_data[k]:
+                # TODO: support multiple to_fields
+                kwargs = { field.to_fields[0]: new_data[k] }
+                value = field.rel.to().__class__.objects.get(**kwargs)
+            else:
+                value = None
         else:
             value = new_data[k]
         setattr(obj, k, value)
@@ -148,7 +139,8 @@ def modeldiff_delete(r):
     r.fields = fields
 
     if ok_to_apply:
-        obj.delete(modeldiff_ignore=True)
+        obj._modeldiff_ignore = True
+        obj.delete()
         r.applied = True
         r.save()
 
