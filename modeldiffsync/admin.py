@@ -92,15 +92,15 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
             if action == 'all':
                 # fix previous data first
                 print "update ALL"
-                old_data = json.loads(modeldiff.old_data)
+                old_data = decode_json(modeldiff.old_data)
                 fields = get_fields(modeldiff) or old_data.keys()
                 for k in set(fields) & set(old_data.keys()):
                     setattr(obj, k, old_data[k])
 
-            new_data = json.loads(modeldiff.new_data)
+            new_data = decode_json(modeldiff.new_data)
             if action in ('all', 'new_only'):
                 print "update NEW only"
-                new_data = json.loads(modeldiff.new_data)
+                new_data = decode_json(modeldiff.new_data)
                 fields = get_fields(modeldiff) or new_data.keys()
                 # limit fields to those in new_data
                 for k in set(fields) & set(new_data.keys()):
