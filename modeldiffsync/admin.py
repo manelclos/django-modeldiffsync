@@ -22,6 +22,14 @@ except ImportError:
     from django.utils.encoding import force_unicode as force_text
 
 
+def decode_json(json_data):
+    if json_data:
+        data = json.loads(json_data)
+    else:
+        data = {}
+    return data
+
+
 def get_diff(original, modified, fields, skip_empty=False):
     data = []
     dmp = diff_match_patch()
@@ -109,8 +117,8 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
             current = get_object_values(obj, model)
 
             fields = sorted(result['models_fields'][r.model_name])
-            old_data = json.loads(r.old_data)
-            new_data = json.loads(r.new_data)
+            old_data = decode_json(r.old_data)
+            new_data = decode_json(r.new_data)
 
             old_diff = get_diff(current, old_data, fields)
             new_diff = get_diff(current, new_data, fields, skip_empty=True)
