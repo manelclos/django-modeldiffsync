@@ -1,9 +1,9 @@
-from django.conf.urls import patterns, include, url
+from django.conf.urls import url
 
 from modeldiffsync.api import GeomodeldiffList, Update
 
 
-urlpatterns = patterns('',
+urlpatterns = [
     url(r'^geomodeldiff$', GeomodeldiffList.as_view()),
     url(r'^update', Update.as_view()),
-)
+]

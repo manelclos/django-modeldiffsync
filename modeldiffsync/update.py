@@ -1,8 +1,8 @@
 import json
 
+from django.apps import apps
 from django.db import transaction, connection
 from django.db.models import ForeignKey
-from django.db.models.loading import get_model
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
 from django.contrib.gis.utils.wkt import precision_wkt
@@ -12,7 +12,7 @@ from modeldiff.models import Geomodeldiff
 
 
 def get_current_object_from_db(modeldiff):
-    model = get_model(*modeldiff.model_name.rsplit('.', 1))
+    model = apps.get_model(*modeldiff.model_name.rsplit('.', 1))
     unique_field = getattr(model.Modeldiff, 'unique_field', None)
 
     try:
@@ -85,7 +85,7 @@ def modeldiff_update(r):
     fields = old_data.keys()
 
     current = get_object_values(obj, model)
-    
+
     for k in old_data:
         current_value = current.get(k)
 
@@ -132,7 +132,7 @@ def modeldiff_delete(r):
     fields = old_data.keys()
 
     current = get_object_values(obj, model)
-    
+
     for k in old_data:
         current_value = current.get(k)
 
