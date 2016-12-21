@@ -100,8 +100,20 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
                 print "update ALL"
                 old_data = decode_json(modeldiff.old_data)
                 fields = get_fields(modeldiff) or old_data.keys()
+                # for k in set(fields) & set(old_data.keys()):
+                #     setattr(obj, k, old_data[k])
                 for k in set(fields) & set(old_data.keys()):
-                    setattr(obj, k, old_data[k])
+                    field = model._meta.get_field(k)
+                    if isinstance(field, ForeignKey):
+                        if old_data[k]:
+                            # TODO: support multiple to_fields
+                            kwargs = {field.to_fields[0]: old_data[k]}
+                            value = field.rel.to().__class__.objects.get(**kwargs)
+                        else:
+                            value = None
+                    else:
+                        value = old_data[k]
+                    setattr(obj, k, value)
 
             new_data = decode_json(modeldiff.new_data)
             if action in ('all', 'new_only'):
@@ -109,8 +121,20 @@ class ModeldiffSyncAdmin(admin.ModelAdmin):
                 new_data = decode_json(modeldiff.new_data)
                 fields = get_fields(modeldiff) or new_data.keys()
                 # limit fields to those in new_data
+                # for k in set(fields) & set(new_data.keys()):
+                #     setattr(obj, k, new_data[k])
                 for k in set(fields) & set(new_data.keys()):
-                    setattr(obj, k, new_data[k])
+                    field = model._meta.get_field(k)
+                    if isinstance(field, ForeignKey):
+                        if new_data[k]:
+                            # TODO: support multiple to_fields
+                            kwargs = { field.to_fields[0]: new_data[k] }
+                            value = field.rel.to().__class__.objects.get(**kwargs)
+                        else:
+                            value = None
+                    else:
+                        value = new_data[k]
+                    setattr(obj, k, value)
                 save_object(obj)
                 modeldiff.applied = True
                 modeldiff.save()
