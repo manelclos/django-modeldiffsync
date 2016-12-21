@@ -5,6 +5,7 @@ from django.forms import TextInput, Textarea
 from django.http import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils.safestring import mark_safe
+from django.db.models import ForeignKey
 
 import json
 
