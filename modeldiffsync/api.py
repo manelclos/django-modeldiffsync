@@ -1,7 +1,7 @@
 import json
 
 from django.conf import settings
-
+from django.core.mail import mail_admins
 from restless.views import Endpoint
 from restless.modelviews import ListEndpoint, DetailEndpoint
 from restless.models import serialize
@@ -57,6 +57,6 @@ class Update(Endpoint):
         result = apply_modeldiffs()
 
         if len(result['rows_skipped']) > 0:
-            mail_admins('Some modeldiffs failed to apply!')
+            mail_admins('Some modeldiffs failed to apply!', 'ERROR!')
 
         return serialize(result['qs'], exclude=('the_geom'))
