@@ -5,7 +5,6 @@ setup(
     name='modeldiffsync',
     version='0.1',
     description='Sync modeldiff information between two databases',
-    long_description=open('README.md').read(),
     author='Manel Clos',
     author_email='manelclos@gmail.com',
     url='http://github.com/manelclos/django-modeldiffsync',
