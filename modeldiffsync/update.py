@@ -156,7 +156,8 @@ def modeldiff_delete(r):
 
 
 def apply_modeldiffs(limit=None):
-    qs = Geomodeldiff.objects.filter(applied=False).order_by('date_created')
+    qs = Geomodeldiff.objects.filter(
+        applied=False).order_by('date_created', 'pk')
     qs = qs.exclude(key=settings.MODELDIFF_KEY)
 
     if limit:
@@ -187,7 +188,9 @@ def apply_modeldiffs(limit=None):
         if r.applied:
             rows.applied.append(r)
         else:
+            # no multitasking
             rows.skipped.append(r)
+            break
 
     result = {
         'qs': qs,
